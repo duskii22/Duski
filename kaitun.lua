@@ -1,5 +1,5 @@
 -- ==========================================
--- SPEED HUB X - DELTA SAFE KAITUN BRIDGE
+-- SPEED HUB X - FULLY UPDATED KAITUN SCRIPT
 -- ==========================================
 
 local HttpService = game:GetService("HttpService")
@@ -8,7 +8,7 @@ local Player = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CommF_ = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
 
--- Universal HTTP Request fallback for Delta/Synapse/Fluxus
+-- Universal HTTP Request fallback for Delta
 local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
 if not httpRequest then
     warn("Executor does not support HTTP requests!")
@@ -55,7 +55,7 @@ local function getInventoryData()
     return inventory
 end
 
--- Screen notification to let you know it started successfully
+-- Startup Notification
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "Speed Hub X",
     Text = "Web Dashboard Connected!",
@@ -63,11 +63,12 @@ game:GetService("StarterGui"):SetCore("SendNotification", {
 })
 
 -- ==========================================
--- 1. CLOUD SYNC BRIDGE
+-- 1. CLOUD SYNC BRIDGE WITH DEBUG ALERTS
 -- ==========================================
 task.spawn(function()
     while task.wait(2) do
         pcall(function()
+            -- Push Player Telemetry & Current Settings TO Firebase
             local payload = {
                 Level = Player.Data and Player.Data:FindFirstChild("Level") and Player.Data.Level.Value or 1,
                 Race = Player.Data and Player.Data:FindFirstChild("Race") and Player.Data.Race.Value or "Human",
@@ -82,6 +83,7 @@ task.spawn(function()
                 Body = HttpService:JSONEncode(payload)
             })
 
+            -- Pull Updated Settings FROM Firebase (Web Control)
             local res = httpRequest({
                 Url = API_URL .. "KaitunData/Settings.json",
                 Method = "GET"
@@ -90,6 +92,14 @@ task.spawn(function()
                 local cloudSettings = HttpService:JSONDecode(res.Body)
                 if type(cloudSettings) == "table" then
                     for k, v in pairs(cloudSettings) do
+                        -- Debug alert: notifies you on screen when a toggle changes from the website
+                        if k == "Auto Farm Level" and SpeedHubX[k] ~= v then
+                            game:GetService("StarterGui"):SetCore("SendNotification", {
+                                Title = "Toggle Updated!",
+                                Text = "Auto Farm Level: " .. tostring(v),
+                                Duration = 2
+                            })
+                        end
                         SpeedHubX[k] = v
                     end
                 end
