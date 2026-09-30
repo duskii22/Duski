@@ -1,4 +1,9 @@
-print("Kaitun Script Loaded Successfully!")
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Duski Kaitun",
+    Text = "Script successfully executed!",
+    Duration = 5
+})
+
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
