@@ -46,7 +46,6 @@
     </div>
 
     <script>
-        -- Your actual Firebase Database URL pointing straight to the root json --
         const API_URL = "https://duskikaitun-default-rtdb.firebaseio.com/.json";
 
         async function syncDashboard() {
@@ -85,14 +84,12 @@
         async function toggleSetting(settingName) {
             let isChecked = document.getElementById(settingName).checked;
             try {
-                // Fetch current data first to avoid overwriting everything
                 let getRes = await fetch(API_URL);
                 let currentData = await getRes.json() || {};
                 
                 if (!currentData.Settings) currentData.Settings = {};
                 currentData.Settings[settingName] = isChecked;
 
-                // Push updated settings back to Firebase
                 await fetch(API_URL, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
@@ -103,7 +100,7 @@
             }
         }
 
-        setInterval(syncDashboard, 3000); // Refresh every 3 seconds
+        setInterval(syncDashboard, 3000);
         syncDashboard();
     </script>
 </body>
