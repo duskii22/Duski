@@ -1,75 +1,54 @@
--- Visual startup confirmation
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Duski Kaitun",
-    Text = "Connected to Firebase & Running!",
-    Duration = 5
-})
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local Workspace = game:GetService("Workspace")
-
+local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
-local Remotes = ReplicatedStorage:WaitForChild("Remotes", 9e9)
-local CommF_ = Remotes:WaitForChild("CommF_", 9e9)
+local CommF_ = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_")
 
--- Your Firebase Database URL
 local API_URL = "https://duskikaitun-default-rtdb.firebaseio.com/"
 
--- Local Settings table
-local KaitunSettings = {
-    AutoFarmLevel = true,
-    AutoStoreFruit = false,
-    AutoHaki = true
-}
-
--- Function to send player data to Firebase root for your Dashboard
-local function sendTelemetry()
+-- Gather full inventory for the dashboard
+local function getInventoryData()
+    local inventory = { Swords = {}, Fruits = {} }
     pcall(function()
-        local levelVal = 1
-        local raceVal = "Human"
-        
-        -- Safely fetch Blox Fruits player data paths
-        if Player:FindFirstChild("Data") then
-            if Player.Data:FindFirstChild("Level") then
-                levelVal = Player.Data.Level.Value
-            end
-            if Player.Data:FindFirstChild("Race") then
-                raceVal = Player.Data.Race.Value
+        local inv = CommF_:InvokeServer("getInventory")
+        if type(inv) == "table" then
+            for _, item in pairs(inv) do
+                if item.Type == "Sword" then table.insert(inventory.Swords, item.Name)
+                elseif item.Type == "Blox Fruit" or item.Type == "Fruit" then table.insert(inventory.Fruits, item.Name) end
             end
         end
-
-        local data = {
-            Level = levelVal,
-            Race = raceVal,
-            Status = "Running",
-            Settings = KaitunSettings
-        }
-        
-        -- Push data directly to the root .json endpoint
-        request({
-            Url = API_URL .. ".json",
-            Method = "PUT",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode(data)
-        })
     end)
+    return inventory
 end
 
--- Main Execution & Telemetry Loop
+-- Universal Sync Loop
 task.spawn(function()
-    while task.wait(3) do
+    while task.wait(2) do
         pcall(function()
-            -- Sync data to cloud dashboard every 3 seconds
-            sendTelemetry()
+            -- 1. Push Telemetry & Current Settings TO Firebase
+            local payload = {
+                Level = Player.Data and Player.Data:FindFirstChild("Level") and Player.Data.Level.Value or 1,
+                Race = Player.Data and Player.Data:FindFirstChild("Race") and Player.Data.Race.Value or "Human",
+                Inventory = getInventoryData(),
+                Settings = SpeedHubX -- Automatically grabs all 700 lines of toggles/settings!
+            }
 
-            -- Auto Haki Logic
-            if KaitunSettings.AutoHaki then
-                local character = Player.Character
-                if character and not character:FindFirstChild("HasBuso") then
-                    if CommF_ then
-                        CommF_:InvokeServer("Buso")
+            request({
+                Url = API_URL .. "KaitunData.json",
+                Method = "PUT",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode(payload)
+            })
+
+            -- 2. Pull Updated Settings FROM Firebase (Remote Control)
+            local res = request({
+                Url = API_URL .. "KaitunData/Settings.json",
+                Method = "GET"
+            })
+            if res and res.Body then
+                local cloudSettings = HttpService:JSONDecode(res.Body)
+                if type(cloudSettings) == "table" then
+                    for k, v in pairs(cloudSettings) do
+                        SpeedHubX[k] = v
                     end
                 end
             end
