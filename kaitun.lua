@@ -1,5 +1,5 @@
 -- ==========================================
--- SPEED HUB X - GITHUB KAITUN BRIDGE & LOOPS
+-- SPEED HUB X - DELTA SAFE KAITUN BRIDGE
 -- ==========================================
 
 local HttpService = game:GetService("HttpService")
@@ -8,10 +8,16 @@ local Player = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CommF_ = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
 
--- Your Firebase Realtime Database URL
+-- Universal HTTP Request fallback for Delta/Synapse/Fluxus
+local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
+if not httpRequest then
+    warn("Executor does not support HTTP requests!")
+    return
+end
+
 local API_URL = "https://duskikaitun-default-rtdb.firebaseio.com/"
 
--- Initialize the SpeedHubX configuration table if it doesn't exist
+-- Initialize SpeedHubX configuration table
 getgenv().SpeedHubX = getgenv().SpeedHubX or {
     ["Auto Farm Level"] = false,
     ["Auto Farm Neareast"] = false,
@@ -31,7 +37,7 @@ getgenv().SpeedHubX = getgenv().SpeedHubX or {
     ["Auto Buy Legendary Sword"] = false
 }
 
--- Gather full inventory data (Swords & Fruits)
+-- Gather inventory data safely
 local function getInventoryData()
     local inventory = { Swords = {}, Fruits = {} }
     pcall(function()
@@ -49,13 +55,19 @@ local function getInventoryData()
     return inventory
 end
 
+-- Screen notification to let you know it started successfully
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Speed Hub X",
+    Text = "Web Dashboard Connected!",
+    Duration = 3
+})
+
 -- ==========================================
--- 1. CLOUD SYNC BRIDGE (Push Status / Pull Toggles)
+-- 1. CLOUD SYNC BRIDGE
 -- ==========================================
 task.spawn(function()
     while task.wait(2) do
         pcall(function()
-            -- Push Player Telemetry & Settings TO Firebase
             local payload = {
                 Level = Player.Data and Player.Data:FindFirstChild("Level") and Player.Data.Level.Value or 1,
                 Race = Player.Data and Player.Data:FindFirstChild("Race") and Player.Data.Race.Value or "Human",
@@ -63,15 +75,14 @@ task.spawn(function()
                 Settings = SpeedHubX
             }
 
-            request({
+            httpRequest({
                 Url = API_URL .. "KaitunData.json",
                 Method = "PUT",
                 Headers = {["Content-Type"] = "application/json"},
                 Body = HttpService:JSONEncode(payload)
             })
 
-            -- Pull Updated Settings FROM Firebase (Web Control)
-            local res = request({
+            local res = httpRequest({
                 Url = API_URL .. "KaitunData/Settings.json",
                 Method = "GET"
             })
@@ -88,10 +99,10 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- 2. ACTIVE IN-GAME EXECUTION LOOPS
+-- 2. IN-GAME EXECUTION LOOPS
 -- ==========================================
 
--- Auto Farm Level Execution Loop
+-- Auto Farm Level Loop
 task.spawn(function()
     while task.wait(0.3) do
         pcall(function()
@@ -117,7 +128,7 @@ task.spawn(function()
     end
 end)
 
--- Fast Attack Execution Loop
+-- Fast Attack Loop
 task.spawn(function()
     while task.wait(0.1) do
         pcall(function()
@@ -128,5 +139,3 @@ task.spawn(function()
         end)
     end
 end)
-
-print("GitHub Kaitun Bridge & Execution Loops Loaded Successfully!")
